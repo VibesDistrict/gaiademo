@@ -22,7 +22,7 @@ const script = Dancing_Script({
 })
 
 const siteUrl =
-  process.env.NEXT_PUBLIC_SITE_URL ?? 'https://gaia-demo.vercel.app'
+  process.env.NEXT_PUBLIC_SITE_URL ?? 'https://gaia-pasta-iota.vercel.app'
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
