@@ -22,13 +22,14 @@ const script = Dancing_Script({
 })
 
 const siteUrl =
-  process.env.NEXT_PUBLIC_SITE_URL ?? 'https://gaiapasta-app.vercel.app'
+  process.env.NEXT_PUBLIC_SITE_URL ?? 'https://gaia-demo.vercel.app'
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: 'Gaia Pasta | Pedidos',
   description:
     'Pide en Gaia Pasta: Dinner In por QR, delivery o pick up. Paga con pago móvil, tarjeta o Binance.',
+  applicationName: 'Gaia Pasta',
   openGraph: {
     title: 'Gaia Pasta | Pedidos',
     description:
@@ -39,19 +40,19 @@ export const metadata: Metadata = {
     type: 'website',
     images: [
       {
-        url: '/brand/gaia-logo.png',
-        width: 512,
-        height: 512,
+        url: '/opengraph-image.png',
+        width: 1200,
+        height: 630,
         alt: 'Gaia Pasta',
       },
     ],
   },
   twitter: {
-    card: 'summary',
+    card: 'summary_large_image',
     title: 'Gaia Pasta | Pedidos',
     description:
       'Pide en Gaia Pasta: Dinner In por QR, delivery o pick up.',
-    images: ['/brand/gaia-logo.png'],
+    images: ['/opengraph-image.png'],
   },
   icons: {
     icon: [
@@ -59,6 +60,7 @@ export const metadata: Metadata = {
       { url: '/icon.png', type: 'image/png', sizes: '512x512' },
     ],
     apple: [{ url: '/apple-icon.png', sizes: '180x180', type: 'image/png' }],
+    shortcut: ['/favicon.ico'],
   },
 }
 
