@@ -77,7 +77,7 @@ Links de mesa: `https://tu-dominio.vercel.app/m/mesa-1`
 Admin → Ajustes → Mesas → copiar links e imprimir QR.
 
 ## Estructura
-
+Deploy: Vercel production
 ```
 app/                 # rutas (/, /m/[code], /admin, /cart…)
 components/          # layout, menu, cart, orders, admin…
