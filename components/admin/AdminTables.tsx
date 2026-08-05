@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import type { RestaurantTable } from '@/lib/types'
+import { tableDeepLink } from '@/lib/table-url'
 import { CopyButton } from '@/components/brand/CopyButton'
 import {
   Field,
@@ -11,14 +12,10 @@ import {
   inputClassName,
 } from '@/components/ui'
 import { AdminCollapsibleSection } from '@/components/admin/AdminCollapsibleSection'
-
-function tableUrl(code: string) {
-  const base =
-    typeof window !== 'undefined'
-      ? window.location.origin
-      : process.env.NEXT_PUBLIC_SITE_URL ?? ''
-  return `${base.replace(/\/$/, '')}/m/${code}`
-}
+import {
+  TableQrCard,
+  downloadTableQrPng,
+} from '@/components/admin/TableQrCard'
 
 export function AdminTables() {
   const [tables, setTables] = useState<RestaurantTable[]>([])
@@ -27,6 +24,8 @@ export function AdminTables() {
   const [number, setNumber] = useState('')
   const [label, setLabel] = useState('')
   const [saving, setSaving] = useState(false)
+  const [previewCode, setPreviewCode] = useState<string | null>(null)
+  const [busyCode, setBusyCode] = useState<string | null>(null)
 
   async function load() {
     setLoading(true)
@@ -52,6 +51,16 @@ export function AdminTables() {
     if (!tables.length) return 1
     return Math.max(...tables.map((t) => t.number)) + 1
   }, [tables])
+
+  const previewTable = useMemo(
+    () => tables.find((t) => t.code === previewCode) ?? null,
+    [tables, previewCode]
+  )
+
+  const activeTables = useMemo(
+    () => tables.filter((t) => t.active),
+    [tables]
+  )
 
   async function addTable(e: React.FormEvent) {
     e.preventDefault()
@@ -91,14 +100,44 @@ export function AdminTables() {
     await load()
   }
 
+  async function handleDownload(table: RestaurantTable) {
+    setBusyCode(table.code)
+    setError(null)
+    try {
+      await downloadTableQrPng(table)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo descargar el QR')
+    } finally {
+      setBusyCode(null)
+    }
+  }
+
+  function handlePrintAll() {
+    window.print()
+  }
+
   return (
     <div className="space-y-4">
       <AdminCollapsibleSection
         title="Mesas Dinner In"
-        subtitle="QR por mesa · el cliente escanea y pide"
+        subtitle="El cliente escanea el QR → abre la app en esa mesa"
         defaultOpen
       >
-        <form onSubmit={addTable} className="mb-4 grid gap-3 sm:grid-cols-3">
+        <div className="mb-4 rounded-xl border border-[var(--gp-border)] bg-white p-3 text-sm text-[var(--gp-ink)]">
+          <p className="font-semibold">Flujo en salón</p>
+          <ol className="mt-1 list-decimal space-y-1 pl-5 text-[var(--gp-muted)]">
+            <li>Imprimes o descargas el QR de cada mesa.</li>
+            <li>El cliente abre la cámara y escanea.</li>
+            <li>
+              Se abre Gaia Pasta en Dinner In con esa mesa lista para pedir.
+            </li>
+          </ol>
+        </div>
+
+        <form
+          onSubmit={addTable}
+          className="mb-4 grid gap-3 print:hidden sm:grid-cols-3"
+        >
           <Field label="Número">
             <input
               className={inputClassName}
@@ -125,19 +164,29 @@ export function AdminTables() {
         </form>
 
         {error ? (
-          <p className="mb-3 text-sm text-red-600">{error}</p>
+          <p className="mb-3 text-sm text-red-600 print:hidden">{error}</p>
+        ) : null}
+
+        {!loading && activeTables.length > 0 ? (
+          <div className="mb-4 flex flex-wrap gap-2 print:hidden">
+            <PrimaryButton type="button" onClick={handlePrintAll}>
+              Imprimir todos los QR
+            </PrimaryButton>
+          </div>
         ) : null}
 
         {loading ? (
-          <p className="text-sm text-[var(--gp-muted)]">Cargando mesas…</p>
+          <p className="text-sm text-[var(--gp-muted)] print:hidden">
+            Cargando mesas…
+          </p>
         ) : tables.length === 0 ? (
-          <p className="text-sm text-[var(--gp-muted)]">
+          <p className="text-sm text-[var(--gp-muted)] print:hidden">
             Aún no hay mesas. Agrega la primera o corre el seed SQL.
           </p>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-2 print:hidden">
             {tables.map((table) => {
-              const url = tableUrl(table.code)
+              const url = tableDeepLink(table.code)
               return (
                 <div
                   key={table.id}
@@ -157,7 +206,24 @@ export function AdminTables() {
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <CopyButton text={url} label="Copiar link QR" />
+                    <SecondaryButton
+                      type="button"
+                      onClick={() =>
+                        setPreviewCode(
+                          previewCode === table.code ? null : table.code
+                        )
+                      }
+                    >
+                      {previewCode === table.code ? 'Ocultar QR' : 'Ver QR'}
+                    </SecondaryButton>
+                    <SecondaryButton
+                      type="button"
+                      disabled={busyCode === table.code}
+                      onClick={() => void handleDownload(table)}
+                    >
+                      {busyCode === table.code ? 'Descargando…' : 'Descargar PNG'}
+                    </SecondaryButton>
+                    <CopyButton text={url} label="Copiar link" />
                     <SecondaryButton
                       type="button"
                       onClick={() => toggleActive(table)}
@@ -170,6 +236,21 @@ export function AdminTables() {
             })}
           </div>
         )}
+
+        {previewTable ? (
+          <div className="mt-4 flex justify-center print:hidden">
+            <TableQrCard table={previewTable} />
+          </div>
+        ) : null}
+
+        {/* Hoja imprimible: solo mesas activas */}
+        <div className="qr-print-sheet mt-6 hidden print:block">
+          <div className="grid grid-cols-2 gap-4">
+            {activeTables.map((table) => (
+              <TableQrCard key={table.id} table={table} size={200} />
+            ))}
+          </div>
+        </div>
       </AdminCollapsibleSection>
     </div>
   )

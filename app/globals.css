@@ -261,3 +261,26 @@ html {
     animation: none !important;
   }
 }
+
+/* QR de mesas: hoja imprimible desde Admin → Ajustes */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .qr-print-sheet,
+  .qr-print-sheet * {
+    visibility: visible;
+  }
+  .qr-print-sheet {
+    display: block !important;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    padding: 12mm;
+  }
+  .table-qr-card {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}
