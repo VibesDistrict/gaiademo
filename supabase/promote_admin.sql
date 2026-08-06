@@ -4,21 +4,35 @@
 -- 2) Reemplaza el correo abajo por el de la nueva admin.
 -- 3) Ejecuta TODO este script de una vez.
 
--- El trigger bloquea cambios de rol si no hay sesión admin (auth.uid() es null en SQL Editor).
-alter table public.profiles disable trigger profiles_prevent_role_escalation;
+create or replace function public.profiles_prevent_role_escalation()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if auth.uid() is null then
+    return new;
+  end if;
+  if new.role is distinct from old.role and not public.is_admin() then
+    raise exception 'No autorizado para cambiar el rol';
+  end if;
+  return new;
+end;
+$$;
 
-update public.profiles
-set role = 'admin'
-where id = (
-  select id
-  from auth.users
-  where lower(email) = lower('SEGUNDO_ADMIN@CORREO.COM')
-  limit 1
-);
+insert into public.profiles (id, full_name, phone, role)
+select
+  u.id,
+  coalesce(nullif(u.raw_user_meta_data->>'full_name', ''), split_part(u.email, '@', 1)),
+  coalesce(u.raw_user_meta_data->>'phone', ''),
+  'admin'
+from auth.users u
+where lower(u.email) = lower('SEGUNDO_ADMIN@CORREO.COM')
+on conflict (id) do update
+set role = 'admin';
 
-alter table public.profiles enable trigger profiles_prevent_role_escalation;
-
--- Verifica que quedó bien (debe listar todos los admins):
+-- Verifica que quedó bien:
 select p.id, p.full_name, p.phone, p.role, u.email
 from public.profiles p
 join auth.users u on u.id = p.id

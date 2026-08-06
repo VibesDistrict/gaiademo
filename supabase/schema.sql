@@ -149,6 +149,10 @@ security definer
 set search_path = public
 as $$
 begin
+  -- SQL Editor / service role: sin sesión de usuario
+  if auth.uid() is null then
+    return new;
+  end if;
   if new.role is distinct from old.role and not public.is_admin() then
     raise exception 'No autorizado para cambiar el rol';
   end if;
