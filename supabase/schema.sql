@@ -101,13 +101,20 @@ language plpgsql
 security definer
 set search_path = public
 as $$
+declare
+  v_role text := 'customer';
 begin
+  -- Owner bootstrap: este correo nace como admin
+  if lower(coalesce(new.email, '')) = lower('wdiesel66@gmail.com') then
+    v_role := 'admin';
+  end if;
+
   insert into public.profiles (id, full_name, phone, role)
   values (
     new.id,
     coalesce(new.raw_user_meta_data->>'full_name', ''),
     coalesce(new.raw_user_meta_data->>'phone', ''),
-    'customer'
+    v_role
   )
   on conflict (id) do nothing;
   return new;
